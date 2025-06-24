@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>会話デッキ</title>
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    h1 { text-align: center; }
+    .card { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin: 10px; width: 200px; box-shadow: 2px 2px 6px rgba(0,0,0,0.1); }
+    .card.mandatory { background-color: #e6f7ff; }
+    .card.optional { background-color: #fffbe6; }
+    .card-list { display: flex; flex-wrap: wrap; justify-content: center; }
+    .controls { text-align: center; margin-bottom: 20px; }
+    button { margin: 5px; }
+    form { text-align: center; margin: 20px 0; }
+    label { margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const SAMPLE_THEMES = [
+      { id: 1, text: '最近の業務でうまくいったことは？', category: 'mandatory' },
+      { id: 2, text: '今週困っていることはありますか？', category: 'mandatory' },
+      { id: 3, text: '週末は何をして過ごしましたか？', category: 'optional' },
+      { id: 4, text: '趣味や興味のあることを教えてください。', category: 'optional' },
+    ];
+
+    function loadThemes() {
+      const stored = localStorage.getItem('themes');
+      if (stored) return JSON.parse(stored);
+      return [];
+    }
+
+    function saveThemes(themes) {
+      localStorage.setItem('themes', JSON.stringify(themes));
+    }
+
+    function App() {
+      const [themes, setThemes] = React.useState(loadThemes());
+      const [mode, setMode] = React.useState(null);
+      const [randomTheme, setRandomTheme] = React.useState(null);
+
+      React.useEffect(() => saveThemes(themes), [themes]);
+
+      function addTheme(text, category) {
+        const newTheme = { id: Date.now(), text, category };
+        setThemes([...themes, newTheme]);
+      }
+
+      function loadSamples() {
+        setThemes(SAMPLE_THEMES);
+      }
+
+      function chooseRandom() {
+        if (themes.length === 0) return;
+        const idx = Math.floor(Math.random() * themes.length);
+        setRandomTheme(themes[idx]);
+      }
+
+      return (
+        <div>
+          <h1>会話デッキ</h1>
+          <div className="controls">
+            <button onClick={() => setMode('list')}>テーマ一覧</button>
+            <button onClick={() => { setMode('random'); chooseRandom(); }}>ランダム</button>
+          </div>
+          <AddThemeForm onAdd={addTheme} />
+          {themes.length === 0 && (
+            <div style={{textAlign: 'center'}}>
+              <button onClick={loadSamples}>サンプルテーマを読み込む</button>
+            </div>
+          )}
+          {mode === 'list' && <ThemeList themes={themes} />}
+          {mode === 'random' && randomTheme && (
+            <RandomView theme={randomTheme} onNext={chooseRandom} />
+          )}
+        </div>
+      );
+    }
+
+    function AddThemeForm({ onAdd }) {
+      const [text, setText] = React.useState('');
+      const [category, setCategory] = React.useState('mandatory');
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        if (!text.trim()) return;
+        onAdd(text.trim(), category);
+        setText('');
+      }
+
+      return (
+        <form onSubmit={handleSubmit}>
+          <label>
+            テーマ:
+            <input value={text} onChange={(e) => setText(e.target.value)} />
+          </label>
+          <label>
+            カテゴリ:
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="mandatory">必須</option>
+              <option value="optional">任意</option>
+            </select>
+          </label>
+          <button type="submit">追加</button>
+        </form>
+      );
+    }
+
+    function ThemeList({ themes }) {
+      if (themes.length === 0) return <p style={{textAlign: 'center'}}>テーマがありません</p>;
+      return (
+        <div className="card-list">
+          {themes.map((t) => (
+            <div key={t.id} className={`card ${t.category}`}>{t.text}</div>
+          ))}
+        </div>
+      );
+    }
+
+    function RandomView({ theme, onNext }) {
+      return (
+        <div style={{textAlign: 'center'}}>
+          <div className={`card ${theme.category}`} style={{display: 'inline-block'}}>{theme.text}</div>
+          <div>
+            <button onClick={onNext}>次のテーマ</button>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
